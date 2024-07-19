@@ -1,0 +1,12 @@
+body {
+    max-width: 1200px;
+    margin: auto;
+}
+
+header {
+    text-align: center;
+}
+
+footer {
+    text-align: center;
+}
