@@ -8,6 +8,14 @@ fi
 
 readonly DOCUMENTATION_ROOT=$(pwd); export DOCUMENTATION_ROOT
 
+remove_section_number () {
+    cut -d_ -f2-
+}
+
+remove_extension () {
+    cut -d. -f1
+}
+
 start_body () {
 
     echo '<html>'
@@ -29,6 +37,38 @@ echo '</html>'
 
 }
 
+header_for_separate () {
+
+    PREV_PAGE=$1
+    NEXT_PAGE=$2
+
+    echo '<header>'
+    echo '  <h1>'
+    echo '    <a href="/">Documentation Title</a>'
+    echo '  </h1>'
+    echo '  <div class="page-link">'
+    echo "    <a class=\"page-link-prev\" href=\"$PREV_PAGE\">Previous</a>,&nbsp;"
+    echo '    <a class="page-link-top" href="/">Top</a>,&nbsp;'
+    echo "    <a class=\"page-link-next\" href=\"$NEXT_PAGE\">Next</a>"
+    echo '  </div>'
+    echo '</header>'
+}
+
+footer_for_separate () {
+
+    PREV_PAGE=$1
+    NEXT_PAGE=$2
+
+    echo '<footer>'
+    echo '  <div class="page-link">'
+    echo "    <a class=\"page-link-prev\" href=\"$PREV_PAGE\">Previous</a>,&nbsp;"
+    echo '    <a class="page-link-top" href="/">Top</a>,&nbsp;'
+    echo "    <a class=\"page-link-next\" href=\"$NEXT_PAGE\">Next</a>"
+    echo '  </div>'
+    echo '</footer>'
+
+}
+
 generate_toc () {
 
     echo '<nav>'
@@ -36,13 +76,36 @@ generate_toc () {
     echo '<ol>'
     for CONTENT in $(ls $DOCUMENTATION_ROOT/parts/contents); do
         echo '<li>'
-        echo "<a href=\"contents/$(echo $CONTENT | cut -d_ -f2-)\">"
-        echo $CONTENT | cut -d_ -f2- | cut -d. -f1
+        echo "<a href=\"contents/$(echo $CONTENT | remove_section_number)\">"
+        echo $CONTENT | remove_section_number | remove_extension
         echo '</a>'
         echo '</li>'
     done
     echo '</ol>'
     echo '</nav>'
+
+}
+
+make_array () {
+
+    ARRAY_NAME=$1
+    VALUES=$2
+
+    COUNT=0
+    for VALUE in $VALUES; do
+        eval "${ARRAY_NAME}$COUNT=$VALUE"
+        COUNT=$(echo $COUNT + 1 | bc)
+    done
+
+    MAX_INDEX=$(echo $COUNT - 1 | bc)
+}
+
+read_array () {
+
+    ARRAY_NAME=$1
+    INDEX=$2
+
+    eval "echo \$${ARRAY_NAME}$INDEX"
 
 }
 
@@ -61,16 +124,32 @@ end_body >> $WRITE_TO
 ## Separate contents
 rm -rf $DOCUMENTATION_ROOT/contents
 mkdir $DOCUMENTATION_ROOT/contents
-for CONTENT in $(ls $DOCUMENTATION_ROOT/parts/contents); do
 
-    WRITE_TO=$DOCUMENTATION_ROOT/contents/$(echo $CONTENT | cut -d_ -f2-)
+make_array CONTENTS "$(ls $DOCUMENTATION_ROOT/parts/contents)"
+CONTENTS_LAST_INDEX=$MAX_INDEX
 
+for COUNT in $(seq 0 1 $CONTENTS_LAST_INDEX); do
+
+    if [ $COUNT -eq 0 ]; then
+        PREV=/
+        NEXT=$(read_array CONTENTS $(echo $COUNT + 1 | bc) | remove_section_number)
+    elif [ $COUNT -eq $CONTENTS_LAST_INDEX ]; then
+        PREV=$(read_array CONTENTS $(echo $COUNT - 1 | bc) | remove_section_number)
+        NEXT=/
+    else
+        PREV=$(read_array CONTENTS $(echo $COUNT - 1 | bc) | remove_section_number)
+        NEXT=$(read_array CONTENTS $(echo $COUNT + 1 | bc) | remove_section_number)
+    fi
+
+    WRITE_TO=$DOCUMENTATION_ROOT/contents/$(read_array CONTENTS $COUNT | remove_section_number)
     :> $WRITE_TO
     start_body >> $WRITE_TO
-    cat $DOCUMENTATION_ROOT/parts/header.html >> $WRITE_TO
-    cat $DOCUMENTATION_ROOT/parts/contents/$CONTENT >> $WRITE_TO
-    cat $DOCUMENTATION_ROOT/parts/footer.html >> $WRITE_TO
+    header_for_separate $PREV $NEXT >> $WRITE_TO
+    cat $DOCUMENTATION_ROOT/parts/contents/$(read_array CONTENTS $COUNT) >> $WRITE_TO
+    footer_for_separate $PREV $NEXT >> $WRITE_TO
     end_body >> $WRITE_TO
+
+    COUNT=$(echo $COUNT + 1 | bc)
 
 done
 
