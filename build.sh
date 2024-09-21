@@ -32,8 +32,8 @@ start_body () {
 
 end_body () {
 
-echo '</body>'
-echo '</html>'
+    echo '</body>'
+    echo '</html>'
 
 }
 
