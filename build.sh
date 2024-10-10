@@ -44,11 +44,11 @@ header_for_separate () {
 
     echo '<header>'
     echo '  <h1>'
-    echo '    <a href="/">Documentation Title</a>'
+    echo '    <a href="index.html">Documentation Title</a>'
     echo '  </h1>'
     echo '  <div class="page-link">'
     echo "    <a class=\"page-link-prev\" href=\"$PREV_PAGE\">Previous</a>,&nbsp;"
-    echo '    <a class="page-link-top" href="/">Top</a>,&nbsp;'
+    echo '    <a class="page-link-top" href="index.html">Top</a>,&nbsp;'
     echo "    <a class=\"page-link-next\" href=\"$NEXT_PAGE\">Next</a>"
     echo '  </div>'
     echo '</header>'
@@ -62,7 +62,7 @@ footer_for_separate () {
     echo '<footer>'
     echo '  <div class="page-link">'
     echo "    <a class=\"page-link-prev\" href=\"$PREV_PAGE\">Previous</a>,&nbsp;"
-    echo '    <a class="page-link-top" href="/">Top</a>,&nbsp;'
+    echo '    <a class="page-link-top" href="index.html">Top</a>,&nbsp;'
     echo "    <a class=\"page-link-next\" href=\"$NEXT_PAGE\">Next</a>"
     echo '  </div>'
     echo '</footer>'
@@ -76,7 +76,7 @@ generate_toc () {
     echo '<ol>'
     for CONTENT in $(ls $DOCUMENTATION_ROOT/parts/contents); do
         echo '<li>'
-        echo "<a href=\"contents/$(echo $CONTENT | remove_section_number)\">"
+        echo "<a href=\"$(echo $CONTENT | remove_section_number)\">"
         echo $CONTENT | remove_section_number | remove_extension
         echo '</a>'
         echo '</li>'
@@ -111,8 +111,11 @@ read_array () {
 
 ### Write document as separate HTML file by content
 
+rm -rf $DOCUMENTATION_ROOT/dist
+mkdir $DOCUMENTATION_ROOT/dist
+
 ## Summary and table of contents
-WRITE_TO=$DOCUMENTATION_ROOT/index.html
+WRITE_TO=$DOCUMENTATION_ROOT/dist/index.html
 :> $WRITE_TO
 start_body >> $WRITE_TO
 cat $DOCUMENTATION_ROOT/parts/header.html >> $WRITE_TO
@@ -122,26 +125,23 @@ cat $DOCUMENTATION_ROOT/parts/footer.html  >> $WRITE_TO
 end_body >> $WRITE_TO
 
 ## Separate contents
-rm -rf $DOCUMENTATION_ROOT/contents
-mkdir $DOCUMENTATION_ROOT/contents
-
 make_array CONTENTS "$(ls $DOCUMENTATION_ROOT/parts/contents)"
 CONTENTS_LAST_INDEX=$MAX_INDEX
 
 for COUNT in $(seq 0 1 $CONTENTS_LAST_INDEX); do
 
     if [ $COUNT -eq 0 ]; then
-        PREV=/
+        PREV=index.html
         NEXT=$(read_array CONTENTS $(echo $COUNT + 1 | bc) | remove_section_number)
     elif [ $COUNT -eq $CONTENTS_LAST_INDEX ]; then
         PREV=$(read_array CONTENTS $(echo $COUNT - 1 | bc) | remove_section_number)
-        NEXT=/
+        NEXT=index.html
     else
         PREV=$(read_array CONTENTS $(echo $COUNT - 1 | bc) | remove_section_number)
         NEXT=$(read_array CONTENTS $(echo $COUNT + 1 | bc) | remove_section_number)
     fi
 
-    WRITE_TO=$DOCUMENTATION_ROOT/contents/$(read_array CONTENTS $COUNT | remove_section_number)
+    WRITE_TO=$DOCUMENTATION_ROOT/dist/$(read_array CONTENTS $COUNT | remove_section_number)
     :> $WRITE_TO
     start_body >> $WRITE_TO
     header_for_separate $PREV $NEXT >> $WRITE_TO
@@ -154,7 +154,7 @@ for COUNT in $(seq 0 1 $CONTENTS_LAST_INDEX); do
 done
 
 ### Write document as a single HTML file
-WRITE_TO=$DOCUMENTATION_ROOT/single.html
+WRITE_TO=$DOCUMENTATION_ROOT/dist/single.html
 :> $WRITE_TO
 start_body >> $WRITE_TO
 cat $DOCUMENTATION_ROOT/parts/header.html >> $WRITE_TO
